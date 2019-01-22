@@ -285,18 +285,9 @@
                 var endRegex = new RegExp("[^" + wordCharacters + "]+$")
 
                 return function(token) {
-                    // for lunr version 2
-                    if (typeof token.update === "function") {
-                        return token.update(function (s) {
-                            return s
-                                .replace(startRegex, '')
-                                .replace(endRegex, '');
-                        })
-                    } else { // for lunr version 1
-                        return token
-                            .replace(startRegex, '')
-                            .replace(endRegex, '');
-                    }
+                    return token
+                        .replace(startRegex, '')
+                        .replace(endRegex, '');
                 };
             }
         }

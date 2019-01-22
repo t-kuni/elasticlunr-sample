@@ -52,16 +52,6 @@
             throw new Error('Lunr stemmer support is not present. Please include / require Lunr stemmer support before this script.');
         }
 
-        /*
-        Japanese tokenization is trickier, since it does not
-        take into account spaces.
-        Since the tokenization function is represented different
-        internally for each of the Lunr versions, this had to be done
-        in order to try to try to pick the best way of doing this based
-        on the Lunr version
-         */
-        var isLunr2 = lunr.version[0] == "2";
-
         /* register specific locale function */
         lunr.jp = function() {
             this.pipeline.reset();
@@ -69,26 +59,16 @@
                 lunr.jp.stopWordFilter,
                 lunr.jp.stemmer
             );
-
             // change the tokenizer for japanese one
-            if (isLunr2) { // for lunr version 2.0.0
-                this.tokenizer = lunr.jp.tokenizer;
-            } else {
-                if (lunr.tokenizer) { // for lunr version 0.6.0
-                    lunr.tokenizer = lunr.jp.tokenizer;
-                }
-                if (this.tokenizerFn) { // for lunr version 0.7.0 -> 1.0.0
-                    this.tokenizerFn = lunr.jp.tokenizer;
-                }
-            }
+            lunr.tokenizer = lunr.jp.tokenizer;
         };
-        var segmenter = new lunr.TinySegmenter();  // インスタンス生成
+        var segmenter = new (require('./tiny_segmenter-0.2.js'))();  // インスタンス生成
 
         lunr.jp.tokenizer = function (obj) {
             if (!arguments.length || obj == null || obj == undefined) return []
-            if (Array.isArray(obj)) return obj.map(function (t) { return isLunr2 ? new lunr.Token(t.toLowerCase()) : t.toLowerCase() })
+            if (Array.isArray(obj)) return obj.map(function (t) { return t.toLowerCase() })
 
-            var str = obj.toString().toLowerCase().replace(/^\s+/, '')
+            var str = obj.toString().replace(/^\s+/, '')
 
             for (var i = str.length - 1; i >= 0; i--) {
                 if (/\S/.test(str.charAt(i))) {
@@ -97,12 +77,13 @@
                 }
             }
 
+
             var segs = segmenter.segment(str);  // 単語の配列が返る
             return segs.filter(function (token) {
-                    return !!token
-                })
+                return !!token
+            })
                 .map(function (token) {
-                    return isLunr2 ? new lunr.Token(token) : token
+                    return token
                 })
         }
 
@@ -116,19 +97,22 @@
         })();
 
         lunr.Pipeline.registerFunction(lunr.jp.stemmer, 'stemmer-jp');
-        lunr.jp.wordCharacters = "一二三四五六七八九十百千万億兆一-龠々〆ヵヶぁ-んァ-ヴーｱ-ﾝﾞa-zA-Zａ-ｚＡ-Ｚ0-9０-９";
 
         /* stop word filter function */
         lunr.jp.stopWordFilter = function(token) {
-            if (lunr.jp.stopWordFilter.stopWords.indexOf(isLunr2 ? token.toString() : token) === -1) {
+            if (lunr.jp.stopWordFilter.stopWords.indexOf(token) === -1) {
                 return token;
             }
         };
 
-        // stopword for japanese is from http://www.ranks.nl/stopwords/japanese
-        lunr.jp.stopWordFilter = lunr.generateStopWordFilter(
-            'これ それ あれ この その あの ここ そこ あそこ こちら どこ だれ なに なん 何 私 貴方 貴方方 我々 私達 あの人 あのかた 彼女 彼 です あります おります います は が の に を で え から まで より も どの と し それで しかし'.split(' '));
+        lunr.jp.stopWordFilter.stopWords = new lunr.SortedSet();
+        lunr.jp.stopWordFilter.stopWords.length = 45;
 
+        // The space at the beginning is crucial: It marks the empty string
+        // as a stop word. lunr.js crashes during search when documents
+        // processed by the pipeline still contain the empty string.
+        // stopword for japanese is from http://www.ranks.nl/stopwords/japanese
+        lunr.jp.stopWordFilter.stopWords.elements = ' これ それ あれ この その あの ここ そこ あそこ こちら どこ だれ なに なん 何 私 貴方 貴方方 我々 私達 あの人 あのかた 彼女 彼 です あります おります います は が の に を で え から まで より も どの と し それで しかし'.split(' ');
         lunr.Pipeline.registerFunction(lunr.jp.stopWordFilter, 'stopWordFilter-jp');
     };
 }))
