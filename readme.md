@@ -11,3 +11,7 @@ Elasticlunrを試せるサンプルです。
 npm install
 node index.js
 ```
+
+## 最後に
+
+お役に立てましたらスターを頂けるとうれしいです！！！！
